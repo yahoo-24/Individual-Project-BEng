@@ -1,11 +1,11 @@
 import numpy as np
-from Abstraction import max_pool, redefine_values, avg_pool
+from .Abstraction import max_pool, redefine_values, avg_pool
 
-TAU_0 = 2 # 2
-ALPHA = 2 # 2
+TAU_0 = 1.5 # 2
+ALPHA = 1.5 # 2
 BETA = 2 # 2
 Q = 5 # 5
-RHO = 0.08 # 0.08
+RHO = 0.10 # 0.08
 ANT_POPULATION = 100 # 100
 ITERATIONS = 100 # 100
 
@@ -31,6 +31,8 @@ class AntColony():
         self.pheromones = np.ones(shape=self.distances.shape) * TAU_0
 
     def __initialise_heuristic(self):
+        # normalise = self.distances / np.max(self.distances)
+        # self.heuristic = 1 / (normalise + 1e-12)
         self.heuristic = 1 / (self.distances + 1e-12)
 
     def __all_unnormalised_posteriors(self):
@@ -112,6 +114,34 @@ class AntColony():
 
         return path, distance
 
+def pre_process_data(mask, coordinates):
+    mask[mask > 0] = 1
+    total_blood_pixels = np.sum(mask)
+    kernel_size = np.ceil(np.sqrt(total_blood_pixels / 80))
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+    kernel_size = int(kernel_size)
+
+    # print(f"Kernel Size:\n {kernel_size}\n\n")
+    # print(f"Mask:\n {mask}\n\n")
+    # print(f"Coordinates:\n {coordinates}\n\n")
+    avg_pooled_image = avg_pool(mask, kernel_size)
+    # print(f"Mask Filtered:\n {avg_pooled_image}\n\n")
+    abstracted_coord = redefine_values(coordinates, kernel_size, dimensions=2)
+    # print(f"Coordinates Filtered:\n {abstracted_coord}\n\n")
+
+    flattened_avg_pooled_image = avg_pooled_image.flatten()
+    flattened_abstracted_coord = abstracted_coord.reshape(-1, 2)
+    nodes = flattened_abstracted_coord[flattened_avg_pooled_image == 1]
+
+    d = []
+    for node in nodes:
+        dist = np.linalg.norm(nodes - node, axis=1)
+        d.append(dist)
+    d = np.array(d)
+    
+    return nodes, d, avg_pooled_image
+
 
 if __name__ == "__main__":
     import cv2
@@ -139,14 +169,14 @@ if __name__ == "__main__":
         print(total_blood_pixels, kernel_size)
 
         #kernel_size = 35
-        max_pooled_image = avg_pool(image, kernel_size)
+        avg_pooled_image = avg_pool(image, kernel_size)
         abstracted_coord = redefine_values(coordinates, kernel_size, 2)
 
-        # print(max_pooled_image)
+        # print(avg_pooled_image)
         # print(abstracted_coord)
-        flattened_max_pooled_image = max_pooled_image.flatten()
+        flattened_avg_pooled_image = avg_pooled_image.flatten()
         flattened_abstracted_coord = abstracted_coord.reshape(-1, 2)
-        nodes = flattened_abstracted_coord[flattened_max_pooled_image == 1]
+        nodes = flattened_abstracted_coord[flattened_avg_pooled_image == 1]
 
         d = []
         for node in nodes:

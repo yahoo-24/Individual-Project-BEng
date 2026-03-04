@@ -1,31 +1,27 @@
 import numpy as np
-from ArtificialPotentialField import ArtificialPotentialField
-from Abstraction import fill_obstacles, abstract
+from .ArtificialPotentialField import ArtificialPotentialField
+from .Abstraction import fill_obstacles, abstract
 
 class ModelPredicitveController:
-    def __init__(self, horizon, samples, cov, min_u, max_u, n=3, APF=True, path=None):
+    def __init__(self, horizon, samples, cov, min_u, max_u, n=3, APF=None, path=None):
         self.H = horizon
         self.K = samples
         self.dimension = n
         self.cov = cov
         self.max_u = max_u
         self.min_u = min_u
-        self.dist_weight = 0
-        self.obs_weight = 20
-        self.rem_weight = 10000
+        self.dist_weight = 0 # 0
+        self.obs_weight = 20 # 20
+        self.rem_weight = 1000 # 10_000
         self.delta_weight = 100000
+        self.path_weight = 2000 # 200
         self.prev_u = np.array([0, 0, 0])
-        if APF:
-            self.APF = ArtificialPotentialField(
-                targets=None,
-                obstacles=None,
-                att_gain=0.16,
-                rep_gain=0.35,
-                max_distance=0.10
-            )
+        if APF is not None:
+            self.APF = APF
         else:
             self.APF = None
         self.path = path
+        self.path_index = 0
 
     def control(self, x0, targets_arr, obstacles):
         """
@@ -75,32 +71,46 @@ class ModelPredicitveController:
     def cost_function(self, new_pos, targets, obstacles, u):
         if self.path is not None:
             path_distances = np.linalg.norm(self.path - new_pos, axis=1)
-            path_index = np.argmin(path_distances)
-            path_cost = path_distances[path_index]
-            if path_index != len(distances) - 1:
-                path_cost += path_distances[path_index + 1]
+            if path_distances[self.path_index] <= 0.2:
+                self.path_index += 1
+                self.path_index = self.path_index % len(path_distances) # Avoid indexing error
+            # path_index = np.argmin(path_distances)
+            # path_cost = path_distances[path_index]
+            # if path_index != len(path_distances) - 1:
+            #     path_cost += path_distances[path_index + 1]
+            path_cost = path_distances[self.path_index]
+            if self.path_index != len(path_distances) - 1:
+                path_cost += path_distances[self.path_index + 1]
         else:
             path_cost = 0
 
         length = len(targets)
 
-        targets = adjust_targets(new_pos, targets)
+        if self.dimension == 3:
+            targets = adjust_targets(new_pos, targets)
+        else:
+            targets = adjust_targets_2d(new_pos, targets)
         distances = np.linalg.norm(targets - new_pos, axis=1)
 
-        obstacle_distance = np.linalg.norm(obstacles - new_pos, axis=1)
-        #t = (obstacles - new_pos) ** 2
-        #obstacle_distance = np.sum(t, axis=1)
-        temp = np.linalg.norm(obstacles[:, :2] - new_pos[:2], axis=1)
-        #temp = np.sum(t[:, :2], axis=1)
-        if new_pos[2] <= -0.1: #np.any(new_pos[2] < (obstacles[temp < 0.01])[:, 2]):
-            return np.inf, targets
+        if obstacles is not None:
+            obstacle_distance = np.linalg.norm(obstacles - new_pos, axis=1)
+        if self.dimension == 3:
+            #t = (obstacles - new_pos) ** 2
+            #obstacle_distance = np.sum(t, axis=1)
+            temp = np.linalg.norm(obstacles[:, :2] - new_pos[:2], axis=1)
+            #temp = np.sum(t[:, :2], axis=1)
+            if new_pos[2] <= -0.1: #np.any(new_pos[2] < (obstacles[temp < 0.01])[:, 2]):
+                return np.inf, targets
         
-        obs_cost = np.sum(0.04 - obstacle_distance[obstacle_distance < 0.04]) * self.obs_weight
+        if obstacles is not None:
+            obs_cost = np.sum(0.04 - obstacle_distance[obstacle_distance < 0.04]) * self.obs_weight
+        else:
+            obs_cost = 0
         dist_cost = np.sum(distances) * self.dist_weight
         rem_cost = (2 * len(targets) - length) * self.rem_weight
 
         #effort_cost = self.delta_weight * angle_between_vectors(u, self.prev_u)
-        cost = rem_cost + obs_cost + dist_cost + path_cost # + effort_cost
+        cost = rem_cost + obs_cost + dist_cost + path_cost * self.path_weight # + effort_cost
         return cost, targets
 
 def angle_between_vectors(v1, v2):
@@ -130,6 +140,14 @@ def adjust_targets(new_pos, targets):
         heights = targets[:, 2] - new_pos[2]
         #print(heights)
         condition = ((distances < 0.02) * ((heights < -0.05) + (heights > 0.05))) + (distances > 0.02)
+        targets = targets[condition]
+        #print(targets)
+        return targets
+
+def adjust_targets_2d(new_pos, targets):
+        distances = np.linalg.norm(targets - new_pos, axis=1)
+        #print(heights)
+        condition = (distances > 0.04)
         targets = targets[condition]
         #print(targets)
         return targets

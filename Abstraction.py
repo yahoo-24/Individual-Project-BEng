@@ -91,7 +91,7 @@ def max_pool(frame, kernel_size):
 
     return result_arr
 
-def avg_pool(frame, kernel_size):
+def avg_pool(frame, kernel_size, threshold=0.75):
     if frame.shape[0] < kernel_size or frame.shape[1] < kernel_size:
         return -1
     
@@ -110,8 +110,8 @@ def avg_pool(frame, kernel_size):
             col_index += 1
         row_index += 1
 
-    result_arr[result_arr < 0.5] = 0
-    result_arr[result_arr >= 0.5] = 1
+    result_arr[result_arr < threshold] = 0
+    result_arr[result_arr >= threshold] = 1
     return result_arr
 
 def redefine_values(frame, kernel_size, dimensions):

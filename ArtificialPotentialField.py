@@ -6,18 +6,38 @@ class ArtificialPotentialField():
         Docstring for __init__
         
         :param targets: A NumPy nx3 array of n targets with their x, y and z positions
-        :param obstacles: A NumPy mx3 array of m targets with their x, y and z positions
+        :param obstacles: A NumPy mx3 array of m obstacles with their x, y and z positions
         :param att_gain: A multiplier increasing the strength of attraction
         :param rep_gain: A multiplier increasing the strength of repulsion
         :param max_distance: The maximum distance from an object where repulsion force can act
         """
         self.targets = targets
+        self._update_len_targets()
         self.obstacles = obstacles
+        self._update_len_obstacles()
+        if obstacles is not None:
+            self.len_obstacles = len(obstacles)
+        else:
+            self.len_obstacles = 1
         self.att_gain = abs(att_gain)
         self.rep_gain = abs(rep_gain)
         self.maximum_distance = abs(max_distance)
 
+    def _update_len_targets(self):
+        if self.targets is not None:
+            self.len_targets = len(self.targets)
+        else:
+            self.len_targets = 1
+
+    def _update_len_obstacles(self):
+        if self.obstacles is not None:
+            self.len_obstacles = len(self.obstacles)
+        else:
+            self.len_obstacles = 1
+
     def attraction(self, position):
+        if self.targets is None:
+            return 0
         differences = self.targets - position # nx3 np array - 1x3 np array --> nx3 np array
         att_force = self.att_gain * differences
         att_force = np.sum(att_force, axis=0)
@@ -25,6 +45,8 @@ class ArtificialPotentialField():
         return att_force
 
     def repulsion(self, position):
+        if self.obstacles is None:
+            return 0
         differences = position - self.obstacles # (1x3 numpy array - mx3 numpy array) --> mx3 numpy array
         distances = np.linalg.norm(differences, axis=1) # 1xm numpy array
 
@@ -46,7 +68,10 @@ class ArtificialPotentialField():
         attraction_force = self.attraction(position)
         repulsion_force = self.repulsion(position)
 
-        return attraction_force / (len(self.targets) + 1e-12) + repulsion_force / (len(self.obstacles) + 1e-12)
+        self._update_len_obstacles()
+        self._update_len_targets()
+
+        return attraction_force / (self.len_targets + 1e-12) + repulsion_force / (self.len_obstacles + 1e-12)
     
 if __name__ == "__main__":
     import matplotlib.pyplot as plt

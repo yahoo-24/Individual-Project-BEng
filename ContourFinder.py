@@ -78,22 +78,28 @@ def isolate_contour(mask, contour):
 
     # Get coordinates of all pixels inside contour
     ys, xs = np.where(filled_mask == 255)
+    filled_mask[filled_mask > 0] = 1
 
     # Coordinates as (row, col)
     coords = np.array([ys, xs]).T
-    return coords
+    return coords, filled_mask
 
 
-def isolate_all_contours(mask, contours):
+def isolate_all_contours(mask, contours=None):
+    if contours is None:
+        contours = find_contours(mask)
     all_contour_pixels = []
+    all_masks = []
 
     for i, contour in enumerate(contours):
         temp_mask = np.zeros_like(mask)
         cv2.drawContours(temp_mask, contours, i, 255, thickness=cv2.FILLED)
         ys, xs = np.where(temp_mask == 255)
+        temp_mask[temp_mask > 0] = 1
+        all_masks.append(temp_mask)
         all_contour_pixels.append(np.array([ys, xs]).T)
 
-    return all_contour_pixels
+    return all_contour_pixels, all_masks
 
 
 
