@@ -3,8 +3,8 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 
 class PathPlanner():
-    def __init__(self, targets, algorithm, depths, res=50):
-        self.targets = targets
+    def __init__(self, mask, algorithm, depths, res=50):
+        self.mask = mask
         self.algorithm = algorithm
         self.depths = depths
         self.res = res
@@ -18,7 +18,7 @@ class PathPlanner():
 
 
     def find_targets(self):
-        targets = np.array(self.targets)
+        targets = np.array(self.mask)
         points = np.where(targets > 0)
         points = np.array([points[0], points[1]]).T
         return points
@@ -26,9 +26,15 @@ class PathPlanner():
 
     def frame_direction(self):
         points = self.find_targets()
+        if len(points) == 0:
+            return None, None, None
+        elif len(points) == 1:
+            return self.mask, 0, None
         mean = points.mean(axis=0)
         centered_points = points - mean
         covariance = np.cov(centered_points.T)
+        if np.inf in covariance or np.NaN in covariance:
+            return None, None, None
         result = np.linalg.eig(covariance)
 
         #eigval, eigvec = result.eigenvalues, result.eigenvectors
@@ -42,17 +48,17 @@ class PathPlanner():
         if eigvec[principal][1] < 0:
             angle_of_rot *= -1
         if angle_of_rot < 1 and angle_of_rot > -1:
-            return self.targets, 90.0, 0
+            return self.mask, 90.0, 0
         else:
             best_angle = 90 + angle_of_rot
         
-        rotated_matrix_same_shape = ndimage.rotate(self.targets, best_angle, reshape=False, order=0)
-        rotated_matrix_full = ndimage.rotate(self.targets, best_angle, reshape=True)
+        rotated_matrix_same_shape = ndimage.rotate(self.mask, best_angle, reshape=False, order=0)
+        rotated_matrix_full = ndimage.rotate(self.mask, best_angle, reshape=True)
 
         return rotated_matrix_same_shape, best_angle, eigvec
 
 
-    def close_points_removal_sweep(self, points, target, threshold=0.02):
+    def close_points_removal_sweep(self, points, target, threshold=0.4):
         """
         This function avoids adding points that are very close to each other to the path.
         Arguments:
@@ -119,8 +125,10 @@ class PathPlanner():
         #print(len(frame[frame > 0]))
         #frame = adjust_values(frame)
         #print(len(frame[frame > 0]))
-        self.targets[self.targets > 0] = 255
+        self.mask[self.mask > 0] = 255
         matrix, angle, _ = self.frame_direction()
+        if matrix is None:
+            return None
         #print(len(matrix[matrix > 0]))
         #print(sum(matrix))
         #plt.imshow(matrix, cmap="gray")
@@ -138,7 +146,7 @@ class PathPlanner():
 
 
     def find_depth_targets(self):
-        condition = self.targets > 0
+        condition = self.mask > 0
         return self.depths[condition]
 
     def locate_mass_center(self, depths):
@@ -147,7 +155,7 @@ class PathPlanner():
         return median
 
 
-    def close_points_removal_spiral(points, target, threshold=20):
+    def close_points_removal_spiral(self, points, target, threshold=0.4):
         """
         This function avoids adding points that are very close to each other to the path.
         Arguments:
@@ -165,7 +173,7 @@ class PathPlanner():
         distances = np.abs(np_points - target)
         return np.all(distances > threshold)
 
-    def check_radius_closeness(self, radius_array, threshold=0.02):
+    def check_radius_closeness(self, radius_array, threshold=0.4):
         if len(radius_array) == 0:
             return np.array([])
         
@@ -204,7 +212,7 @@ class PathPlanner():
             differences = theta - sections  # Subtract to find the closest section to theta
             section_index = np.argmin(np.abs(differences))  # Find the smallest value (abs removes negatives) argmin returns index
             closest_section = sections[section_index]  # Get the closest section
-            # if close_points_removal_spiral(mappings[closest_section], radius):
+            # if self.close_points_removal_spiral(mappings[closest_section], radius):
             #     mappings[closest_section].append(radius)
             mappings[closest_section].append([radius, distance[2]])
         
@@ -229,7 +237,7 @@ class PathPlanner():
         return np.array([x, y])
 
 
-    def check_closeness(self, points, threshold=0.02):
+    def check_closeness(self, points, threshold=0.04):
         if len(points) == 0:
             return np.array([])
         
@@ -241,17 +249,17 @@ class PathPlanner():
             points = points[np.add(condition_1, condition_2)]
             index += 1
 
-        return points
+        return np.array(points)
 
 
-    def spiral_path(self, res):
-        if np.all(self.targets == 0):
+    def spiral_path(self):
+        if np.all(self.mask == 0):
             return []
         depths = self.find_depth_targets()  # Extract ones [n x 2] numpy array
 
         center_of_mass = self.locate_mass_center(depths)  # Tuple of numpy array of mass center location
         distance_matrix = depths - center_of_mass  # [n x 2] numpy array of distances from center of mass
-        polar, lengths = self.convert_to_polar_coord(distance_matrix, res)  # A dictionary of all the positions converted to polar
+        polar, lengths = self.convert_to_polar_coord(distance_matrix, self.res)  # A dictionary of all the positions converted to polar
 
         points = []
         z = []
@@ -265,7 +273,7 @@ class PathPlanner():
                     lengths[index] -= 1
 
         points = self.polar_to_cartesian(center_of_mass, points)
-        points = np.array([points[0], points[1], z]).T
+        points = np.array([-points[1], -points[0], z]).T
         points = self.check_closeness(points)
 
         return points
