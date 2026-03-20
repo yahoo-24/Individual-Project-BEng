@@ -28,7 +28,8 @@ class PathPlanner():
         points = self.find_targets()
         if len(points) == 0:
             return None, None, None
-        elif len(points) == 1:
+        elif len(points) <= 10:
+            # 10 points are not significant to perform all the calculations below
             return self.mask, 0, None
         mean = points.mean(axis=0)
         centered_points = points - mean
@@ -48,6 +49,7 @@ class PathPlanner():
         if eigvec[principal][1] < 0:
             angle_of_rot *= -1
         if angle_of_rot < 1 and angle_of_rot > -1:
+            rotated_matrix_same_shape = ndimage.rotate(self.mask, 90.0, reshape=False, order=0)
             return self.mask, 90.0, 0
         else:
             best_angle = 90 + angle_of_rot

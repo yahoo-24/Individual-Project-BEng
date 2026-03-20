@@ -114,10 +114,10 @@ class AntColony():
 
         return path, distance
 
-def pre_process_data(mask, coordinates):
+def pre_process_data(mask, coordinates, size=30):
     mask[mask > 0] = 1
     total_blood_pixels = np.sum(mask)
-    kernel_size = np.ceil(np.sqrt(total_blood_pixels / 80))
+    kernel_size = np.ceil(np.sqrt(total_blood_pixels / size))
     if kernel_size % 2 == 0:
         kernel_size += 1
     kernel_size = int(kernel_size)
@@ -125,7 +125,7 @@ def pre_process_data(mask, coordinates):
     # print(f"Kernel Size:\n {kernel_size}\n\n")
     # print(f"Mask:\n {mask}\n\n")
     # print(f"Coordinates:\n {coordinates}\n\n")
-    avg_pooled_image = avg_pool(mask, kernel_size)
+    avg_pooled_image = avg_pool(mask, kernel_size, threshold=0.2)
     # print(f"Mask Filtered:\n {avg_pooled_image}\n\n")
     abstracted_coord = redefine_values(coordinates, kernel_size, dimensions=2)
     # print(f"Coordinates Filtered:\n {abstracted_coord}\n\n")
@@ -162,7 +162,7 @@ if __name__ == "__main__":
         coordinates[:, :, 1] *= col_indexes[np.newaxis, :]
 
         total_blood_pixels = np.sum(image)
-        kernel_size = np.ceil(np.sqrt(total_blood_pixels / 40))
+        kernel_size = np.ceil(np.sqrt(total_blood_pixels / 30))
         if kernel_size % 2 == 0:
             kernel_size += 1
         kernel_size = int(kernel_size)

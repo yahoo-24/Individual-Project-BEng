@@ -3,18 +3,18 @@ from .ArtificialPotentialField import ArtificialPotentialField
 from .Abstraction import fill_obstacles, abstract
 
 class ModelPredicitveController:
-    def __init__(self, horizon, samples, cov, min_u, max_u, n=3, APF=None, path=None):
+    def __init__(self, horizon, samples, cov, min_u, max_u, n=3, APF=None, path=None, dist_w=20, obs_w=20, rem_w=1000, path_w=2000):
         self.H = horizon
         self.K = samples
         self.dimension = n
         self.cov = cov
         self.max_u = max_u
         self.min_u = min_u
-        self.dist_weight = 0 # 0
-        self.obs_weight = 20 # 20
-        self.rem_weight = 1000 # 10_000
+        self.dist_weight = dist_w # 0
+        self.obs_weight = obs_w # 20
+        self.rem_weight = rem_w # 10_000
         self.delta_weight = 100000
-        self.path_weight = 2000 # 200
+        self.path_weight = path_w # 200
         self.prev_u = np.array([0, 0, 0])
         if APF is not None:
             self.APF = APF
@@ -74,13 +74,12 @@ class ModelPredicitveController:
             if path_distances[self.path_index] <= 0.2:
                 self.path_index += 1
                 self.path_index = self.path_index % len(path_distances) # Avoid indexing error
-            # path_index = np.argmin(path_distances)
-            # path_cost = path_distances[path_index]
-            # if path_index != len(path_distances) - 1:
-            #     path_cost += path_distances[path_index + 1]
+            self.path_index = np.argmin(path_distances)
             path_cost = path_distances[self.path_index]
             if self.path_index != len(path_distances) - 1:
-                path_cost += path_distances[self.path_index + 1]
+                p = path_distances[self.path_index + 1:self.path_index + 5]
+                p = p * np.linspace(1, len(p), len(p)) * 2
+                path_cost += np.sum(p)
         else:
             path_cost = 0
 
@@ -107,6 +106,8 @@ class ModelPredicitveController:
         else:
             obs_cost = 0
         dist_cost = np.sum(distances) * self.dist_weight
+        if len(targets) != 0:
+            dist_cost /= len(targets)
         rem_cost = (2 * len(targets) - length) * self.rem_weight
 
         #effort_cost = self.delta_weight * angle_between_vectors(u, self.prev_u)

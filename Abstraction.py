@@ -74,8 +74,8 @@ def max_pool(frame, kernel_size):
     if frame.shape[0] < kernel_size or frame.shape[1] < kernel_size:
         return -1
     
-    result_size_col = np.ceil(frame.shape[1] / kernel_size)
-    result_size_row = np.ceil(frame.shape[0] / kernel_size)
+    result_size_col = np.floor(frame.shape[1] / kernel_size)
+    result_size_row = np.floor(frame.shape[0] / kernel_size)
     result_arr = np.zeros((result_size_row.astype(np.int32), result_size_col.astype(np.int32)))
     row_index = 0
     while row_index < result_size_row:
@@ -95,8 +95,8 @@ def avg_pool(frame, kernel_size, threshold=0.75):
     if frame.shape[0] < kernel_size or frame.shape[1] < kernel_size:
         return -1
     
-    result_size_col = np.ceil(frame.shape[1] / kernel_size)
-    result_size_row = np.ceil(frame.shape[0] / kernel_size)
+    result_size_col = np.floor(frame.shape[1] / kernel_size)
+    result_size_row = np.floor(frame.shape[0] / kernel_size)
     result_arr = np.zeros((result_size_row.astype(np.int32), result_size_col.astype(np.int32)))
     row_index = 0
     while row_index < result_size_row:
@@ -119,18 +119,22 @@ def redefine_values(frame, kernel_size, dimensions):
         return -1
     
     centre = (kernel_size + 1) / 2
+    if kernel_size == 1:
+        return frame
+    # print(f"Size: {kernel_size}, Centre: {centre}")
     
-    result_size_col = np.ceil(frame.shape[1] / kernel_size).astype(np.int32)
-    result_size_row = np.ceil(frame.shape[0] / kernel_size).astype(np.int32)
+    result_size_col = np.floor(frame.shape[1] / kernel_size).astype(np.int32)
+    result_size_row = np.floor(frame.shape[0] / kernel_size).astype(np.int32)
+    # print(f"Rows: {result_size_row}")
 
     rem_col = frame.shape[1] % kernel_size
     rem_row = frame.shape[0] % kernel_size
     if rem_col != 0:
-        rem_centre_col = np.floor(rem_col / 2)
+        rem_centre_col = np.floor(rem_col / 2) - 1
     else:
         rem_centre_col = centre
     if rem_row != 0:
-        rem_centre_row = np.floor(rem_row / 2)
+        rem_centre_row = np.floor(rem_row / 2) - 1
     else:
         rem_centre_row = centre
 
@@ -142,6 +146,7 @@ def redefine_values(frame, kernel_size, dimensions):
         else:
             row_centre = row_index * kernel_size + centre
         col_index = 0
+        # print(row_centre)
 
         while col_index < result_size_col:
             if col_index == result_size_col - 1:

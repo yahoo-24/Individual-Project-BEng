@@ -1,7 +1,7 @@
 import numpy as np
 
 class ArtificialPotentialField():
-    def __init__(self, targets, obstacles, att_gain, rep_gain, max_distance):
+    def __init__(self, targets, obstacles, att_gain, rep_gain, max_distance, mini_batches=False):
         """
         Docstring for __init__
         
@@ -22,6 +22,7 @@ class ArtificialPotentialField():
         self.att_gain = abs(att_gain)
         self.rep_gain = abs(rep_gain)
         self.maximum_distance = abs(max_distance)
+        self.mini_batches = mini_batches
 
     def _update_len_targets(self):
         if self.targets is not None:
@@ -38,7 +39,14 @@ class ArtificialPotentialField():
     def attraction(self, position):
         if self.targets is None:
             return 0
-        differences = self.targets - position # nx3 np array - 1x3 np array --> nx3 np array
+        if self.mini_batches:
+            size = int(self.len_targets / 100)
+            choices = np.random.randint(0, self.len_targets, size=size)
+            targets = self.targets[choices]
+            # print(targets.shape, self.targets.shape)
+        else:
+            targets = self.targets
+        differences = targets - position # nx3 np array - 1x3 np array --> nx3 np array
         att_force = self.att_gain * differences
         att_force = np.sum(att_force, axis=0)
 
@@ -70,6 +78,11 @@ class ArtificialPotentialField():
 
         self._update_len_obstacles()
         self._update_len_targets()
+
+        if self.mini_batches:
+            dividend = int(self.len_targets / 100)
+        else:
+            dividend = self.len_targets
 
         return attraction_force / (self.len_targets + 1e-12) + repulsion_force / (self.len_obstacles + 1e-12)
     
