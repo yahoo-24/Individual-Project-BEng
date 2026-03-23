@@ -1,0 +1,71 @@
+Position 1:
+aco: Distance = 25.210m, Time Taken = 78.36005s, 90% Point -> Distance = 19.922m, Time Taken = 56.84444s, 50% Point -> Distance = 8.592m, Time Taken = 25.89520s
+aco: Distance = 21.842m, Time Taken = 59.69109s, 90% Point -> Distance = 16.550m, Time Taken = 45.47800s, 50% Point -> Distance = 11.481m, Time Taken = 29.81800s
+nearest_neighbour: Distance = 23.313m, Time Taken = 35.36820s, 90% Point -> Distance = 15.361m, Time Taken = 22.98199s, 50% Point -> Distance = 6.835m, Time Taken = 10.77039s
+nearest_neighbour: Distance = 23.339m, Time Taken = 35.47092s, 90% Point -> Distance = 15.390m, Time Taken = 23.12291s, 50% Point -> Distance = 6.853m, Time Taken = 10.87715s
+apf: Distance = 7.760m, Time Taken = 17.76693s, 90% Point -> Distance = 6.503m, Time Taken = 14.58361s, 50% Point -> Distance = 2.970m, Time Taken = 8.85870s
+apf: Distance = 6.990m, Time Taken = 16.91527s, 90% Point -> Distance = 5.672m, Time Taken = 13.87064s, 50% Point -> Distance = 2.525m, Time Taken = 8.32396s
+apf: Distance = 7.483m, Time Taken = 17.17068s, 90% Point -> Distance = 5.929m, Time Taken = 14.01386s, 50% Point -> Distance = 2.846m, Time Taken = 8.47887s
+sweep: Distance = 20.495m, Time Taken = 30.09597s, 90% Point -> Distance = 15.627m, Time Taken = 23.02285s, 50% Point -> Distance = 9.414m, Time Taken = 14.64426s
+sweep: Distance = 20.610m, Time Taken = 29.09778s, 90% Point -> Distance = 17.064m, Time Taken = 23.95099s, 50% Point -> Distance = 10.113m, Time Taken = 14.51056s
+sweep: Distance = 21.749m, Time Taken = 30.67611s, 90% Point -> Distance = 17.265m, Time Taken = 24.27018s, 50% Point -> Distance = 10.684m, Time Taken = 15.33823s
+spiral_2: Distance = 19.226m, Time Taken = 31.41334s, 90% Point -> Distance = 12.618m, Time Taken = 20.74670s, 50% Point -> Distance = 6.693m, Time Taken = 11.95472s
+spiral_2: Distance = 19.126m, Time Taken = 31.18116s, 90% Point -> Distance = 12.273m, Time Taken = 20.17958s, 50% Point -> Distance = 6.686m, Time Taken = 11.91219s
+mpc: Distance = 6.796m, Time Taken = 20.56784s, 90% Point -> Distance = 3.740m, Time Taken = 14.29989s, 50% Point -> Distance = 1.390m, Time Taken = 8.06791s
+mpc: Distance = 7.787m, Time Taken = 22.85720s, 90% Point -> Distance = 5.398m, Time Taken = 17.79978s, 50% Point -> Distance = 2.461m, Time Taken = 10.07959s
+mpc_no_apf: Distance = 6.075m, Time Taken = 22.45189s, 90% Point -> Distance = 2.992m, Time Taken = 14.64724s, 50% Point -> Distance = 1.294m, Time Taken = 8.75246s
+mpc_no_apf: Distance = 5.441m, Time Taken = 20.79763s, 90% Point -> Distance = 3.155m, Time Taken = 14.37411s, 50% Point -> Distance = 1.904m, Time Taken = 9.63204s
+mpc_path: Distance = 8.048m, Time Taken = 31.36513s, 90% Point -> Distance = 3.949m, Time Taken = 20.15483s, 50% Point -> Distance = 1.418m, Time Taken = 11.91036s
+mpc_path: Distance = 5.562m, Time Taken = 25.98586s, 90% Point -> Distance = 3.173m, Time Taken = 18.99506s, 50% Point -> Distance = 1.259m, Time Taken = 10.84087s
+
+Position 2:
+aco: Distance = 19.139m, Time Taken = 67.17210s, 90% Point -> Distance = 14.933m, Time Taken = 56.17137s, 50% Point -> Distance = 7.979m, Time Taken = 28.99998s
+nearest_neighbour: Distance = 24.155m, Time Taken = 35.93932s, 90% Point -> Distance = 18.026m, Time Taken = 26.37625s, 50% Point -> Distance = 6.176m, Time Taken = 9.82807s
+apf: Distance = 8.190m, Time Taken = 17.20166s, 90% Point -> Distance = 6.248m, Time Taken = 14.07986s, 50% Point -> Distance = 2.926m, Time Taken = 8.82930s
+sweep: Distance = 17.893m, Time Taken = 24.66636s, 90% Point -> Distance = 14.176m, Time Taken = 19.64436s, 50% Point -> Distance = 8.051m, Time Taken = 11.01836s
+spiral_2: Distance = 16.488m, Time Taken = 26.25713s, 90% Point -> Distance = 12.348m, Time Taken = 19.76461s, 50% Point -> Distance = 6.811m, Time Taken = 11.36008s
+mpc: Distance = 6.648m, Time Taken = 19.21652s, 90% Point -> Distance = 3.628m, Time Taken = 13.07147s, 50% Point -> Distance = 1.533m, Time Taken = 7.49092s
+mpc_path: Distance = 9.472m, Time Taken = 44.50926s, 90% Point -> Distance = 7.546m, Time Taken = 39.21364s, 50% Point -> Distance = 1.111m, Time Taken = 8.72045s
+mpc_no_apf: Distance = 5.573m, Time Taken = 18.34903s, 90% Point -> Distance = 2.933m, Time Taken = 12.33749s, 50% Point -> Distance = 1.227m, Time Taken = 7.79988s
+
+Position 3:
+aco: Distance = 36.093m, Time Taken = 95.36266s, 90% Point -> Distance = 24.888m, Time Taken = 70.10010s, 50% Point -> Distance = 13.304m, Time Taken = 32.30024s
+nearest_neighbour: Distance = 35.123m, Time Taken = 49.68925s, 90% Point -> Distance = 28.424m, Time Taken = 39.16695s, 50% Point -> Distance = 12.941m, Time Taken = 17.84841s
+apf: Distance = 9.412m, Time Taken = 21.55943s, 90% Point -> Distance = 8.250m, Time Taken = 19.27072s, 50% Point -> Distance = 5.121m, Time Taken = 12.54716s
+sweep: Distance = 22.672m, Time Taken = 34.31024s, 90% Point -> Distance = 18.211m, Time Taken = 27.53125s, 50% Point -> Distance = 12.357m, Time Taken = 19.55225s
+spiral_2: Distance = 23.270m, Time Taken = 38.82998s, 90% Point -> Distance = 15.872m, Time Taken = 26.90977s, 50% Point -> Distance = 7.389m, Time Taken = 13.67888s
+mpc: Distance = 9.602m, Time Taken = 27.36113s, 90% Point -> Distance = 7.631m, Time Taken = 22.85912s, 50% Point -> Distance = 5.321m, Time Taken = 17.40435s
+mpc_path: Distance = 5.638m, Time Taken = 26.10300s, 90% Point -> Distance = 4.358m, Time Taken = 22.31450s, 50% Point -> Distance = 2.501m, Time Taken = 15.06789s
+mpc_no_apf: Distance = 5.549m, Time Taken = 21.03920s, 90% Point -> Distance = 4.385m, Time Taken = 17.41004s, 50% Point -> Distance = 2.216m, Time Taken = 11.08469s
+
+nearest_neighbour,16.471,29.83362,10.517,20.14754,3.618,9.39908
+aco,25.072,82.91234,19.677,63.79395,4.195,23.18460
+sweep,27.931,49.56907,23.034,40.63639,15.076,27.31671
+spiral_2,26.378,61.81329,21.303,41.89893,13.942,27.02481
+mpc,7.741,23.90471,5.061,18.17429,1.764,9.90503
+mpc_no_apf,6.737,24.65077,5.045,19.61139,1.875,10.09325
+nearest_neighbour,22.136,45.10300,13.223,27.42029,6.550,15.78053
+aco,17.217,69.28558,14.064,57.13536,6.091,28.87883
+sweep,24.686,42.44214,19.653,34.22158,12.721,23.17774
+mpc,8.933,26.54930,6.696,22.14055,4.018,15.04407
+mpc_no_apf,7.183,30.23186,5.129,25.14033,3.946,22.04233
+nearest_neighbour,15.536,29.85126,9.443,19.28899,2.070,6.77212
+nearest_neighbour,5.924,20.22577,4.819,17.63617,1.291,6.83030
+sweep,26.396,38.25334,20.418,29.67908,13.374,19.65105
+aco,16.532,67.89894,12.041,48.08168,7.229,28.87824
+spiral_2,24.341,44.47207,19.441,32.68088,13.558,22.52372
+mpc,5.227,17.74830,3.129,13.14885,1.996,9.00292
+mpc_no_apf,6.599,23.05598,5.235,19.34055,1.380,8.20830
+nearest_neighbour,18.770,34.27092,16.911,30.82296,4.366,10.52728
+aco,22.839,70.46979,18.038,59.60225,9.016,31.49167
+sweep,25.513,36.13645,21.159,30.11927,14.172,19.68251
+spiral_2,23.620,41.83143,18.910,32.79017,13.126,22.23914
+mpc,6.735,21.00338,5.268,17.49707,3.219,12.43824
+mpc_no_apf,5.532,20.03983,3.717,15.55933,1.640,8.74769
+nearest_neighbour,20.158,38.73246,14.740,26.17763,10.325,18.77222
+aco,19.551,71.90130,15.706,54.73062,9.184,29.92890
+sweep,26.417,38.45810,21.816,32.59357,12.587,19.85944
+spiral_2,24.382,37.16363,19.914,29.33878,14.175,20.18227
+mpc,7.038,22.57220,5.243,18.99396,2.842,12.30192
+mpc_no_apf,6.103,23.94478,3.904,18.44753,2.506,13.45701
+
