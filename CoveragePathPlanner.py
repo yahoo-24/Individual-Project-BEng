@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import math
 
 class PathPlanner():
     def __init__(self, mask, algorithm, depths, res=50):
@@ -12,7 +13,7 @@ class PathPlanner():
 
     def generate_path(self):
         if self.algorithm.upper() == "SPIRAL":
-            return self.spiral_path(self.res)
+            return self.spiral_path()
         else:
             return self.sweep_planner()
 
@@ -44,19 +45,12 @@ class PathPlanner():
             principal = 1
         else:
             principal = 0
-        angle_of_rot = np.arccos(np.dot(np.array([1, 0]), eigvec[principal])) * 180 / np.pi
+        angle_of_rot = -math.atan2(eigvec[principal][1], eigvec[principal][0]) * 180 / np.pi
 
-        if eigvec[principal][1] < 0:
-            angle_of_rot *= -1
-        if angle_of_rot < 1 and angle_of_rot > -1:
-            rotated_matrix_same_shape = ndimage.rotate(self.mask, 90.0, reshape=False, order=0)
-            return self.mask, 90.0, 0
-        else:
-            best_angle = 90 + angle_of_rot
+        best_angle = angle_of_rot
         
         rotated_matrix_same_shape = ndimage.rotate(self.mask, best_angle, reshape=False, order=0)
         rotated_matrix_full = ndimage.rotate(self.mask, best_angle, reshape=True)
-
         return rotated_matrix_same_shape, best_angle, eigvec
 
 
@@ -313,7 +307,7 @@ if __name__ == "__main__":
     depths = depths.reshape(10, 10, 3)
 
     planner = PathPlanner(
-        targets=targets,
+        mask=targets,
         algorithm="SPIRAL",
         depths=depths
     )
@@ -322,7 +316,7 @@ if __name__ == "__main__":
     print("The generated path looks like this:\n", spiral_result, '\n\n')
 
     planner = PathPlanner(
-        targets=targets,
+        mask=targets,
         algorithm="SWEEP",
         depths=depths
     )
