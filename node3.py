@@ -35,6 +35,7 @@ from util.util.ArtificialPotentialField import ArtificialPotentialField
 from util.util.CoveragePathPlanner import PathPlanner
 from util.util.ModelPredictiveControl import ModelPredicitveController
 from util.util.ContourFinder import isolate_contour, isolate_all_contours, find_max_contour
+from util.util.Abstraction import avg_pool, redefine_values
 import matplotlib.pyplot as plt
 from scipy.ndimage import binary_erosion
 
@@ -45,7 +46,7 @@ try:
 except Exception:
     _HAS_CV = False
 
-MODEL = 'Model3'
+MODEL = 'Model5'
 
 def rpy_to_quat(r, p, y):
     rot = kdl.Rotation.RPY(r, p, y)
@@ -104,6 +105,7 @@ class SimpleController(Node):
         self._spiral_last_contour_len = None
         self._csv_path = None
         self.counter = 0
+        self.repetition_number = 0
 
 
         # self._publish_pose(0, 0, -0.50)
@@ -119,7 +121,7 @@ class SimpleController(Node):
 
     def _get_algo_name(self, algo_num):
         return {1: 'global_zigzag', 2: 'adaptive_zigzag', 3: 'centroid', 4: 'spiral', 5: 'aco',
-                6: 'nearest_neighbour', 7: 'apf', 8: 'sweep', 9: 'spiral_2', 10: 'mpc', 11: 'mpc_path', 12: 'mpc_no_apf'}.get(algo_num, 'unknown')
+                6: 'nearest_neighbour', 7: 'apf', 8: 'sweep', 9: 'spiral_2', 10: 'mpc', 11: 'mpc_path', 12: 'mpc_no_apf', 13: 'adaptive_nn'}.get(algo_num, 'unknown')
 
     def _init_csv(self):
         algo_name = self._get_algo_name(self.algo)
@@ -231,8 +233,8 @@ class SimpleController(Node):
             y = float(target[1])
             r = math.sqrt(x**2 + y**2)
             r_max = math.sqrt((self.fov_x/2)**2 + (self.fov_y/2)**2)
-            origin_height = -1.4
-            outer_height = -1.2
+            origin_height = -1.2 # 1.4
+            outer_height = -1.4 # -1.2
             z = origin_height + (r / r_max) * (outer_height - origin_height)
             if current_z < z:
                 z_interim = z
@@ -442,6 +444,8 @@ class SimpleController(Node):
                     self._run_mpc_with_path()
                 elif self.algo == 12:
                     self._run_mpc_no_apf()
+                elif self.algo == 13:
+                    self._run_adaptive_nearest_neighbour()
                 # If finished, go back to menu
                 self.check_90_50_point()
                 if self.particles_remaining == 0 or (not np.any(self.latest_mask) and self.particles_remaining != 8000):
@@ -480,9 +484,10 @@ class SimpleController(Node):
         self.planner = None
         self.completed_50 = False
         self.completed_90 = False
+        self.repetition_number = 0
 
     def record_results(self, t):
-        options = {1: 'basic', 2: 'fourpits', 3: 'random', 4: 'multiregions', 5: 'centre_tissue'}
+        options = {1: 'basic', 2: 'fourpits', 3: 'random', 4: 'c_shaped', 5: 'centre_tissue'}
         correct_input = False
         while not correct_input:
             choice = int(input("Enter the model that was used: "))
@@ -495,9 +500,9 @@ class SimpleController(Node):
 
     def _menu_select(self):
         print("\nSelect algorithm:\n 1 - Global zigzag\n 2 - Adaptive zigzag\n 3 - Centroid follower\n 4 - Inward spiral\n" \
-        " 5 - ACO\n 6 - Nearest Neighbour\n 7 - APF\n 8 - Sweep\n 9 - Spiral 2\n 10 - MPC\n 11 - MPC-w-path\n 12 - MPC-no-apf")
+        " 5 - ACO\n 6 - Nearest Neighbour\n 7 - APF\n 8 - Sweep\n 9 - Spiral 2\n 10 - MPC\n 11 - MPC-w-path\n 12 - MPC-no-apf\n 13 - Adaptive Nearest Neighbour")
         sel = 0
-        while sel not in [1,2,3,4,5,6,7,8,9,10,11,12]:
+        while sel not in [1,2,3,4,5,6,7,8,9,10,11,12,13]:
             try:
                 sel = int(input('Enter 1-12: ').strip())
             except Exception:
@@ -567,17 +572,18 @@ class SimpleController(Node):
                     closest_contour = m # Assign the current contour as the closest
             return closest_contour
 
-    def _aco_helper_function(self):
+    def _aco_helper_function(self, size=30):
         """
         The line of code below is used for the both the Nearest Neighbour and ACO, so a function is made so it can be reused.
         The function generates coordinates and makes the distance matrix. It initialises the model and finds the closest node to the arm to make it the start node.
         """
         while self.latest_mask is None:
+            print('Waiting for mask...')
             time.sleep(0.5)
         coord = self._alt_gen_coordinates() # Generating coordinates
         mask = self.latest_mask
         # mask = erode(self.latest_mask)
-        nodes, distances, _ = pre_process_data(mask, coord) # Generates a distance matrix and extracts the blood pixels
+        nodes, distances, _ = pre_process_data(mask, coord, size=size) # Generates a distance matrix and extracts the blood pixels
         # The above function will also reduce the number of blood pixels by applying a filter to reduce the number of nodes
         model = AntColony(nodes, distances) # Initialisation
 
@@ -590,12 +596,19 @@ class SimpleController(Node):
         first_node = np.argmin(np.linalg.norm(nodes - np.array([x_pos, y_pos]), axis=1)) # Find the closest node to start from there
         return model, first_node, nodes, coord, mask
 
-    def _generate_ant_colony_path(self):
+    def _generate_ant_colony_path(self, adaptive_size=False):
         """
         The function generates a path that is based on the ACO algorithm. The function uses the latest mask and generates the 2D coordinates for
         the mask and plans the path based on the coordinates
         """
-        model, first_node, nodes, coord, mask = self._aco_helper_function()
+        self.repetition_number += 1
+        if adaptive_size:
+            size = int(30 / self.repetition_number)
+            if size < 10:
+                size = 10
+        else:
+            size = 30
+        model, first_node, nodes, coord, mask = self._aco_helper_function(size=size)
         if len(nodes) == 0:
             return
         shortest_path, distance = model.ant_colony(first_node) # Run algorithm to find the shortest path
@@ -627,7 +640,7 @@ class SimpleController(Node):
         The function generates a path that is based on the nearest neighbour algorithm. The function uses the latest mask and generates the 2D coordinates for
         the mask and plans the path based on the coordinates
         """
-        model, first_node, nodes, coord, mask = self._aco_helper_function()
+        model, first_node, nodes, coord, mask = self._aco_helper_function(size=60)
         if len(nodes) == 0:
             return
         shortest_path, distance = model.greedy_nearest_neigbour(first_node) # Run algorithm to find the shortest path
@@ -720,25 +733,55 @@ class SimpleController(Node):
     
     def check_blood_on_path(self, path, coords):
         for target in path:
-            search = (coords == target)
-            search = np.all(search, axis=2)
-            row, col = np.where(search)
+            if self.algo != 9:
+                search = (coords == target)
+                search = np.all(search, axis=2)
+                row, col = np.where(search)
+            else:
+                distances = np.linalg.norm(coords - target, axis=2)
+                index = np.argmin(distances)
+                row = index // distances.shape[1]
+                col = index % distances.shape[1]
             if np.all(self.latest_mask[row, col]):
                 return True
         return False
+    
+    def remove_unecessary_points(self, path, coords):
+        modified_path = []
+        # print("Path Length is", len(path))
+        # print(f"Coordinates \n{coords}\nPath \n{path}")
+        for target in path:
+            # input()
+            if self.algo != 9:
+                search = (coords == target)
+                search = np.all(search, axis=2)
+                row, col = np.where(search)
+            else:
+                distances = np.linalg.norm(coords - target, axis=2)
+                index = np.argmin(distances)
+                row = index // distances.shape[1]
+                col = index % distances.shape[1]
+            if np.all(self.latest_mask[row, col]):
+                # print("Found")
+                modified_path.append(target)
+            # else:
+                # print("Not Found")
+        return np.array(modified_path)
 
-    def _follow_path(self, path, min_distance_to_target=0.02, start_closest=False):
+    def _follow_path(self, path, min_distance_to_target=0.1, start_closest=False, remove_unecessary=True):
         """
         The function accepts a path in the two-dimensional space and follows it.
         Parameters:
         -----------
         path: nx2 array of n points to go to. Each point consists of an x and y coordinate
         min_distance_to_target: The minimum distance that the arm has to be to the target for it to move to the next point
+        remove_unecessary: Removes points where there are no blood improving efficiency. Function is not stable and behaves erratically.
         """
         # ------- Algorithm to follow path written here ------- #
         coords = self._alt_gen_coordinates()
         path_length = len(path)
         while self.latest_pose is None:
+            print('Waiting for pose...')
             time.sleep(0.5)
 
         if start_closest:
@@ -756,21 +799,41 @@ class SimpleController(Node):
         while path_index < path_length:
             self.check_90_50_point()
             # Check the path every timesteps
-            if not self.check_blood_on_path(path[path_index:], coords):
-                break
+            if not remove_unecessary:
+                if not self.check_blood_on_path(path[path_index:], coords):
+                    break
             x_pos = self.latest_pose.position.x
             y_pos = self.latest_pose.position.y
             distance = np.linalg.norm(target_pos - np.array([x_pos, y_pos])) # Get the distance to the point it has to go to
             # print(f" Index: \n {path_index}\n\n Position: \n {x_pos, y_pos} \n\n Distance: \n {distance}\n\n Target:\n {target_pos}")
             if distance < min_distance_to_target or counter == 20:
                 # If the arm is close enough, then move to the next point
-                path_index += 1
-                if path_index == path_length:
+                if remove_unecessary:
+                    modified_path = self.remove_unecessary_points(path[path_index:], coords)
+                    if len(modified_path) != 0:
+                        path = np.concatenate((path[:path_index], modified_path))
+                    else:
+                        path = path[:path_index]
+                    print(f"Index: {path_index}, Length: {len(path)}")
+                    # if np.all(np.abs(path[path_index]) == np.inf):
+                    #     break
+                    path_index += 1
+                    # while np.any(np.abs(path[path_index]) == np.inf):
+                    #     print("Skipping")
+                    #     path_index += 1
+                else:
+                    path_index += 1
+                print('Moving to Next Index')
+                path_length = len(path)
+                if path_index >= path_length:
                     break
                 counter = 0
+
             target_pos = path[path_index]
             counter += 1
+            print('Moving...')
             self.move_blocking((target_pos[0], target_pos[1]))
+            time.sleep(0.05)
     
     def _run_ant_colony(self):
         """
@@ -778,7 +841,7 @@ class SimpleController(Node):
         See https://en.wikipedia.org/wiki/Ant_colony_optimization_algorithms for more information about the algorithm
         """
         path = self._generate_ant_colony_path()
-        self._follow_path(path)
+        self._follow_path(path, remove_unecessary=False)
 
     def _run_nearest_neighbour(self):
         """
@@ -786,7 +849,17 @@ class SimpleController(Node):
         See https://en.wikipedia.org/wiki/Travelling_salesman_problem#Constructive_heuristics for more information about the algorithm
         """
         path = self._generate_nearest_neighbour_path()
-        self._follow_path(path)
+        self._follow_path(path, remove_unecessary=True)
+
+    def _run_adaptive_nearest_neighbour(self):
+        """
+        Runs the Greedy Nearest Neighbour algorithm.
+        See https://en.wikipedia.org/wiki/Travelling_salesman_problem#Constructive_heuristics for more information about the algorithm
+        """
+        adaptive_path_limit = 10
+        path = self._generate_nearest_neighbour_path()
+        path = path[:adaptive_path_limit]
+        self._follow_path(path, remove_unecessary=True)
 
     def _run_potential_fields(self):
         """
@@ -805,17 +878,19 @@ class SimpleController(Node):
         coordinates = self._alt_gen_coordinates()
         mask = self.latest_mask
         mask = self._filter_targets(mask, method='closest')
-        prev_mask = mask
+        prev_mask = mask.copy()
         if np.sum(mask) != 0:
             mask = erode(mask, 10) # Erode the mask as there is no need to move all the way to the end as it will be suctioned in
             if np.sum(mask) <= 1:
                 mask = prev_mask # If the region is very small, eroding the mask may leave nothing. In that case, revert to the uneroded mask
+            # print(np.sum(mask))
             model = PathPlanner(mask=mask, algorithm="SWEEP", depths=coordinates)
             path = model.sweep_planner()
             if path is None or len(path) == 0:
+                print("No path!")
                 return
             # print(path)
-            self._follow_path(path, start_closest=False)
+            self._follow_path(path, start_closest=False, remove_unecessary=True)
 
     def _run_spiral_2(self):
         while self.latest_mask is None:
@@ -839,7 +914,7 @@ class SimpleController(Node):
         if len(path) != 0:
             path = path[:, 0:2] # Drop the z-axis
             # self.move_blocking(path[0])
-            self._follow_path(path)
+            self._follow_path(path, remove_unecessary=True)
 
     def _run_mpc(self):
         while self.latest_mask is None:
@@ -851,34 +926,56 @@ class SimpleController(Node):
         APF = ArtificialPotentialField(
             targets=None,
             obstacles=None,
-            att_gain=0.04,
+            att_gain=0.1,
             rep_gain=0.2,
             max_distance=0.10
         )
 
+        output_size = 1
         controller = ModelPredicitveController (
-            6,
+            8,
             400,
-            np.identity(2) * 0.04,
+            np.identity(2) * 0.1,
             -0.4,
             0.4,
             APF=APF,
             n=2,
-            rem_w=10000,
-            dist_w=0
+            rem_w=200,
+            dist_w=5,
+            path_w=0,
+            returned_horizon=output_size
         )
 
         x_pos = self.latest_pose.position.x
         y_pos = self.latest_pose.position.y
         pos = np.array([x_pos, y_pos])
 
+        # Cell Decomposition to speed up the algorithm uncomment this to use and adjust mask and coordinates below with the decomposed ones
+        # kernel_size = int(np.ceil(np.sqrt(mask.sum() / 60)))
+        # print(kernel_size)
+        # if kernel_size > 1:
+        #     decomposed_mask = avg_pool(mask, kernel_size)
+        #     decomposed_coords = redefine_values(coordinates, kernel_size, 2)
+        # else:
+        #     decomposed_mask = mask
+        #     decomposed_coords = coordinates
+        # target_coords = decomposed_coords[decomposed_mask > 0]
+        # u, _ = controller.control(pos, target_coords, None)
+
+        # mask = iterative_eroding(mask) # Iterative binary erosion to speed up algorithm uncomment to use
         target_coords = coordinates[mask > 0]
         if len(target_coords) > 400:
-            target_coords = target_coords[::2]
-        # target_coords, _, _ = pre_process_data(mask, coordinates)
+            target_coords = target_coords[::3]
         u, _ = controller.control(pos, target_coords, None)
-        pos += u
-        self.move_blocking(pos)
+
+        # pos += u
+        # self.move_blocking(pos)
+
+        for i in range(output_size):
+            pos += u[i]
+            print(pos)
+            self.move_blocking(pos)
+            time.sleep(0.2)
 
     def _run_mpc_with_path(self):
         while self.latest_mask is None:
@@ -925,7 +1022,7 @@ class SimpleController(Node):
 
         controller = ModelPredicitveController (
             8,
-            600,
+            500,
             np.identity(2) * 0.015,
             -0.5,
             0.5,
@@ -984,7 +1081,7 @@ class SimpleController(Node):
         self._my_csv_path = os.path.join(os.getcwd(), MODEL, fname)
         with open(self._my_csv_path, 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['Timestamp', 'total_particles', 'particles_remaining', 'distance_travelled'])
+            writer.writerow(['Timestamp', 'particles_remaining', 'distance_travelled'])
 
     def _my_log_csv(self):
         if not hasattr(self, '_my_csv_path'):
@@ -1004,13 +1101,19 @@ def erode(mask, amount):
     eroded_mask = binary_erosion(mask, structure=np.ones((amount, amount))).astype(np.uint8)
     return eroded_mask
 
+def iterative_eroding(mask):
+    while True:
+        if mask.sum() < 200:
+            return mask
+        mask = erode(mask, 5)
+
 def main(argv=None):
     rclpy.init(args=argv)
     node = SimpleController()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.record_results(np.inf)
+        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()
