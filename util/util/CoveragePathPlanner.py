@@ -48,15 +48,9 @@ class PathPlanner():
             principal = 1
         else:
             principal = 0
-        angle_of_rot = np.arccos(np.dot(np.array([1, 0]), eigvec[principal])) * 180 / np.pi
+        angle_of_rot = -math.atan2(eigvec[principal][1], eigvec[principal][0]) * 180 / np.pi
 
-        if eigvec[principal][1] < 0:
-            angle_of_rot *= -1
-        if angle_of_rot < 1 and angle_of_rot > -1:
-            rotated_matrix_same_shape = ndimage.rotate(self.mask, 90.0, reshape=False, order=0)
-            return self.mask, 90.0, 0
-        else:
-            best_angle = 90 + angle_of_rot
+        best_angle = angle_of_rot
         
         rotated_matrix_same_shape = ndimage.rotate(self.mask, best_angle, reshape=False, order=0)
         rotated_matrix_full = ndimage.rotate(self.mask, best_angle, reshape=True)
