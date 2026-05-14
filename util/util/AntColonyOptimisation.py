@@ -272,7 +272,7 @@ if __name__ == "__main__":
     import cv2
     import matplotlib.pyplot as plt
 
-    dataset_location = '/home/yahia/Downloads/Dataset/Testing Data/'
+    dataset_location = '/Location to Testing Data/'
     for i in range(1, 9):
         file_name = f'test_data_{i}.png'
         image = cv2.imread(dataset_location + file_name, 0)
