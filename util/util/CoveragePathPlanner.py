@@ -3,6 +3,30 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 
 class PathPlanner():
+    """
+    Path planning utility for generating coverage trajectories over
+    segmented blood masks.
+
+    Supported planning algorithms:
+    --------------------------------
+    - SPIRAL : Generates an inward/outward spiral trajectory.
+    - SWEEP  : Generates a zigzag raster sweep trajectory.
+
+    Parameters
+    ----------
+    mask : numpy.ndarray
+        Binary mask representing valid target regions.
+
+    algorithm : str
+        Name of the planning algorithm to use.
+
+    depths : numpy.ndarray
+        Coordinate/depth map associated with the mask.
+
+    res : int, optional
+        Angular resolution used for spiral planning.
+    """
+    
     def __init__(self, mask, algorithm, depths, res=50):
         self.mask = mask
         self.algorithm = algorithm
@@ -11,6 +35,14 @@ class PathPlanner():
 
 
     def generate_path(self):
+        """
+        Generate a trajectory using the selected planning algorithm.
+
+        Returns
+        -------
+        numpy.ndarray
+            Planned trajectory points.
+        """
         if self.algorithm.upper() == "SPIRAL":
             return self.spiral_path(self.res)
         else:
@@ -18,17 +50,59 @@ class PathPlanner():
 
 
     def find_targets(self):
+        """
+        Extract active target pixel locations from the mask.
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of target pixel indices with shape (n, 2).
+        """
         targets = np.array(self.mask)
         points = np.where(targets > 0)
         points = np.array([points[0], points[1]]).T
         return points
     
     def check_empty(self, mask):
+        """
+        Check whether a mask contains any active pixels.
+
+        Parameters
+        ----------
+        mask : numpy.ndarray
+            Binary mask to evaluate.
+
+        Returns
+        -------
+        bool
+            True if the mask is empty, otherwise False.
+        """
         if np.sum(mask) == 0:
             return True
         return False
 
     def frame_direction(self):
+        """
+        Estimate the principal direction of the target region.
+
+        Principal Component Analysis (PCA) is used to determine the
+        dominant orientation of the segmented region. The mask is then
+        rotated to align the axis that is the second component (opposite
+        of the principal axis) horizontally for more
+        efficient sweep planning.
+
+        Returns
+        -------
+        tuple
+            rotated_matrix_same_shape : numpy.ndarray
+                Rotated mask with original dimensions preserved.
+
+            best_angle : float
+                Rotation angle in degrees.
+
+            eigvec : numpy.ndarray
+                Eigenvectors from PCA analysis.
+        """
         points = self.find_targets()
         if len(points) == 0:
             return None, None, None
@@ -64,17 +138,23 @@ class PathPlanner():
 
     def close_points_removal_sweep(self, points, target, threshold=0.4):
         """
-        This function avoids adding points that are very close to each other to the path.
-        Arguments:
+        Prevent closely spaced sweep points from being duplicated.
 
-            points: The points that have already been added to the array (path) -> list (nx2)
+        Parameters
+        ----------
+        points : list
+            Existing path points.
 
-            target: The new point that is going to be added -> numpy array (1x2)
+        target : numpy.ndarray
+            Candidate point to add.
 
-            threshold: The minimum distance between the new point to all other existing point for it to be added
+        threshold : float
+            Minimum allowable distance between points.
 
-        Output:
-            Boolean value indicating if the new point should be added to the path
+        Returns
+        -------
+        bool
+            True if the target should be added.
         """
         if len(points) == 0:
             return True
@@ -85,6 +165,29 @@ class PathPlanner():
 
 
     def sweep(self, frame, frame_shape, angle):
+        """
+        Generate a raster sweep trajectory over a rotated mask.
+
+        The function traverses the mask row-by-row in a zigzag
+        pattern and maps rotated coordinates back to the original
+        image frame.
+
+        Parameters
+        ----------
+        frame : numpy.ndarray
+            Rotated binary mask.
+
+        frame_shape : tuple
+            Shape of the original frame.
+
+        angle : float
+            Rotation angle used to align the frame.
+
+        Returns
+        -------
+        list
+            List of planned Cartesian path points.
+        """
         points = []
         center_y, center_x = frame.shape
         center_x = (center_x - 1) / 2
@@ -107,6 +210,25 @@ class PathPlanner():
 
 
     def map_back_to_original(self, rotated_point, angle, frame_shape):
+        """
+        Convert a rotated coordinate back into the original frame.
+
+        Parameters
+        ----------
+        rotated_point : list
+            Point in rotated coordinates.
+
+        angle : float
+            Rotation angle in degrees.
+
+        frame_shape : tuple
+            Shape of the original image.
+
+        Returns
+        -------
+        list
+            Original image indices [row, column].
+        """
         # Center of the original matrix
         height, width = frame_shape
         y_center = (width - 1) / 2
@@ -126,34 +248,67 @@ class PathPlanner():
 
 
     def sweep_planner(self):
-        #print(len(frame[frame > 0]))
-        #frame = adjust_values(frame)
-        #print(len(frame[frame > 0]))
+        """
+        Generate a complete sweep-based coverage path.
+
+        Returns
+        -------
+        numpy.ndarray
+            Planned sweep trajectory.
+        """
         self.mask[self.mask > 0] = 255
         matrix, angle, _ = self.frame_direction()
         if matrix is None:
             return None
-        #print(len(matrix[matrix > 0]))
-        #print(sum(matrix))
-        #plt.imshow(matrix, cmap="gray")
-        #plt.show()
         matrix = self.adjust_values(matrix)
         points = self.sweep(matrix, matrix.shape, angle)
-        #print(len(points))
-        #print(remade_points)
         return np.array(points)
 
 
     def adjust_values(self, frame):
+        """
+        Convert mask values to binary format.
+
+        Parameters
+        ----------
+        frame : numpy.ndarray
+            Input image mask.
+
+        Returns
+        -------
+        numpy.ndarray
+            Binary mask.
+        """
         frame[frame > 0] = 1
         return frame
 
 
     def find_depth_targets(self):
+        """
+        Extract depth coordinates corresponding to active mask pixels.
+
+        Returns
+        -------
+        numpy.ndarray
+            Target depth coordinates.
+        """
         condition = self.mask > 0
         return self.depths[condition]
 
     def locate_mass_center(self, depths):
+        """
+        Estimate the centre of mass of the target region.
+
+        Parameters
+        ----------
+        depths : numpy.ndarray
+            Target coordinates.
+
+        Returns
+        -------
+        numpy.ndarray
+            Median centre location.
+        """
         median = np.median(depths, axis=0)
         median[2] = 0.0 # z-axis irrelevant for planning
         return median
@@ -161,23 +316,45 @@ class PathPlanner():
 
     def close_points_removal_spiral(self, points, target, threshold=0.4):
         """
-        This function avoids adding points that are very close to each other to the path.
-        Arguments:
+        Remove closely spaced spiral radii.
 
-            points: The points that have already been added to the array (path) -> list (nx2)
+        Parameters
+        ----------
+        points : list
+            Existing radii.
 
-            target: The new point that is going to be added -> float or int
+        target : float
+            Candidate radius value.
 
-            threshold: The minimum distance between the new point to all other existing point for it to be added
+        threshold : float
+            Minimum allowed spacing.
 
-        Output:
-            Boolean value indicating if the new point should be added to the path
+        Returns
+        -------
+        bool
+            True if radius should be added.
         """
         np_points = np.array(points)
         distances = np.abs(np_points - target)
         return np.all(distances > threshold)
 
     def check_radius_closeness(self, radius_array, threshold=0.4):
+        """
+        Remove radii that are too similar.
+
+        Parameters
+        ----------
+        radius_array : numpy.ndarray
+            Radius-angle pairs.
+
+        threshold : float
+            Minimum radius separation.
+
+        Returns
+        -------
+        numpy.ndarray
+            Filtered radius array.
+        """
         if len(radius_array) == 0:
             return np.array([])
         
@@ -194,6 +371,26 @@ class PathPlanner():
 
 
     def convert_to_polar_coord(self, distances, resolution=24):
+        """
+        Convert Cartesian coordinates into polar sectors.
+
+        Parameters
+        ----------
+        distances : numpy.ndarray
+            Cartesian coordinates relative to centre.
+
+        resolution : int
+            Number of angular sectors.
+
+        Returns
+        -------
+        tuple
+            mappings : dict
+                Polar coordinate groupings.
+
+            lengths : numpy.ndarray
+                Number of points in each angular sector.
+        """
         mappings = dict()
         lengths = []
         sections = np.array([i * np.pi * 2 / resolution for i in range(resolution)])
@@ -234,6 +431,22 @@ class PathPlanner():
 
 
     def polar_to_cartesian(self, center, points):
+        """
+        Convert polar coordinates back into Cartesian coordinates.
+
+        Parameters
+        ----------
+        center : numpy.ndarray
+            Centre offset.
+
+        points : list
+            Polar points [radius, theta].
+
+        Returns
+        -------
+        numpy.ndarray
+            Cartesian coordinates.
+        """
         points = np.array(points).T
         x, y = points[0] * np.cos(points[1]), points[0] * np.sin(points[1])
         y += center[1]
@@ -242,6 +455,22 @@ class PathPlanner():
 
 
     def check_closeness(self, points, threshold=0.04):
+        """
+        Remove spatially redundant points from a path.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            Planned path points.
+
+        threshold : float
+            Minimum allowed spacing.
+
+        Returns
+        -------
+        numpy.ndarray
+            Filtered path.
+        """
         if len(points) == 0:
             return np.array([])
         
@@ -257,6 +486,21 @@ class PathPlanner():
 
 
     def spiral_path(self):
+        """
+        Generate a spiral coverage trajectory.
+
+        The algorithm:
+        ----------------
+        1. Finds the centre of mass.
+        2. Converts target points into polar coordinates.
+        3. Traverses angular sectors progressively.
+        4. Converts the final trajectory back to Cartesian space.
+
+        Returns
+        -------
+        numpy.ndarray
+            Spiral trajectory points.
+        """
         if np.all(self.mask == 0):
             return []
         depths = self.find_depth_targets()  # Extract ones [n x 2] numpy array
