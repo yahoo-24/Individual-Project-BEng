@@ -33,7 +33,7 @@ from datetime import datetime
 from util.util.AntColonyOptimisation import AntColony, pre_process_data
 from util.util.ArtificialPotentialField import ArtificialPotentialField
 from util.util.CoveragePathPlanner import PathPlanner
-from util.util.ModelPredictiveControl import ModelPredicitveController
+from util.util.ModelPredictiveControl import ModelPredictiveController
 from util.util.ContourFinder import isolate_contour, isolate_all_contours, find_max_contour
 from util.util.Abstraction import avg_pool, redefine_values
 import matplotlib.pyplot as plt
@@ -932,7 +932,7 @@ class SimpleController(Node):
         )
 
         output_size = 1
-        controller = ModelPredicitveController (
+        controller = ModelPredictiveController (
             8,
             400,
             np.identity(2) * 0.1,
@@ -1020,7 +1020,7 @@ class SimpleController(Node):
                 max_distance=0.10
             )
 
-        controller = ModelPredicitveController (
+        controller = ModelPredictiveController (
             8,
             500,
             np.identity(2) * 0.015,
@@ -1052,7 +1052,7 @@ class SimpleController(Node):
         mask = self._filter_targets(mask, method='closest')
         coordinates = self._alt_gen_coordinates()
 
-        controller = ModelPredicitveController (
+        controller = ModelPredictiveController (
             8,
             600,
             np.identity(2) * 0.03,
