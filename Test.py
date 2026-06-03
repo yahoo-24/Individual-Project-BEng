@@ -25,7 +25,7 @@ from tensorflow.keras.models import load_model
 # model = load_model("mobilenetv3_unet_cpu.keras")  # use SavedModel folder
 
 # Load and preprocess image
-# img = load_img("//home//yahia//Downloads//HemoSet//pig3//imgs//002940.png", target_size=(224,224))
+# img = load_img("path to image file", target_size=(224,224))
 # img_array = img_to_array(img)
 # img_array = np.expand_dims(img_array, axis=0)  # batch dimension
 # img_array = preprocess_input(img_array)  # [-1,1] scaling
